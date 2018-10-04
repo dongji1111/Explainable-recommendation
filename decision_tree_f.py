@@ -30,7 +30,6 @@ class Node:
         self.dislike = None
         self.unknown = None
         self.feature_index = None  # add feature_index to splits the data
-        # self.item_index = None
         self.vector = None
 
 
@@ -127,7 +126,7 @@ class Tree:
             #print(len(indices_unknown))
             # print(indices_unknown)
             params[feature_index] = []
-            params[feature_index].extend((rating_matrix, item_vectors, indices_like, indices_dislike, indices_unknown, K))
+            params[feature_index].extend((rating_matrix, item_vectors, current_node.vector, indices_like, indices_dislike, indices_unknown, K))
 
             #print("Split the data into like, dislike and unknown for feature", feature_index)
 
@@ -136,7 +135,7 @@ class Tree:
         results = []
         for feature_index in range(len(opinion_matrix[0])):
             #result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
-            result =opt.cal_splitvalue(params[feature_index][0],params[feature_index][1],params[feature_index][2],params[feature_index][3],params[feature_index][4],params[feature_index][5])
+            result = opt.cal_splitvalue(params[feature_index][0],params[feature_index][1],params[feature_index][2],params[feature_index][3],params[feature_index][4],params[feature_index][5],params[feature_index][6])
             results.append(result)
 
         for feature_index in range(len(opinion_matrix[0])):
@@ -145,7 +144,7 @@ class Tree:
         pool.close()
         pool.join()
 
-        bestFeature = np.argmax(split_values)
+        bestFeature = np.argmin(split_values)
         print("bestFeature index: ", bestFeature)
 
         # Store the feature_index for the current_node
@@ -171,11 +170,11 @@ class Tree:
         dislike_vector = current_node.vector
         unknown_vector = current_node.vector
         if len(indices_like) > 0:
-            like_vector = opt.cf_user(rating_matrix, item_vectors, indices_like, K)
+            like_vector = opt.cf_user(rating_matrix, item_vectors, current_node.vector, indices_like, K)
         if len(indices_dislike) > 0:
-            dislike_vector = opt.cf_user(rating_matrix, item_vectors, indices_dislike, K)
+            dislike_vector = opt.cf_user(rating_matrix, item_vectors, current_node.vector, indices_dislike, K)
         if len(indices_unknown) > 0:
-            unknown_vector = opt.cf_user(rating_matrix, item_vectors, indices_unknown, K)
+            unknown_vector = opt.cf_user(rating_matrix, item_vectors, current_node.vector, indices_unknown, K)
 
         # CONDITION check condition RMSE Error check is CORRECT
         if split_values[bestFeature] < error_before:
@@ -225,7 +224,7 @@ class Tree:
             #print(len(indices_unknown))
             # print(indices_unknown)
             params[feature_index] = []
-            params[feature_index].extend((rating_matrix, user_vectors, indices_like, indices_dislike, indices_unknown, K))
+            params[feature_index].extend((rating_matrix, user_vectors, current_node.vector, indices_like, indices_dislike, indices_unknown, K))
 
             #print("Split the data into like, dislike and unknown for feature", feature_index)
 
@@ -234,7 +233,7 @@ class Tree:
         results = []
         for feature_index in range(len(opinion_matrix[0])):
             #result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
-            result =opt.cal_splitvalueI(params[feature_index][0],params[feature_index][1],params[feature_index][2],params[feature_index][3],params[feature_index][4],params[feature_index][5])
+            result = opt.cal_splitvalueI(params[feature_index][0],params[feature_index][1],params[feature_index][2], params[feature_index][3],params[feature_index][4],params[feature_index][5],params[feature_index][6])
             results.append(result)
 
         for feature_index in range(len(opinion_matrix[0])):
@@ -270,11 +269,11 @@ class Tree:
         unknown_vector = current_node.vector
 
         if len(indices_like) > 0:
-            like_vector = opt.cf_item(rating_matrix, user_vectors, indices_like, K)
+            like_vector = opt.cf_item(rating_matrix, user_vectors, current_node.vector, indices_like, K)
         if len(indices_dislike) > 0:
-            dislike_vector = opt.cf_item(rating_matrix, user_vectors, indices_dislike, K)
+            dislike_vector = opt.cf_item(rating_matrix, user_vectors, current_node.vector, indices_dislike, K)
         if len(indices_unknown) > 0:
-            unknown_vector = opt.cf_item(rating_matrix, user_vectors, indices_unknown, K)
+            unknown_vector = opt.cf_item(rating_matrix, user_vectors, current_node.vector, indices_unknown, K)
 
         # CONDITION check condition RMSE Error check is CORRECT
         if split_values[bestFeature] < error_before:
