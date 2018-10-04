@@ -1,7 +1,6 @@
 # Import the Required Libraries
 import autograd.numpy as np
 import math
-# import form user defined libraries
 import decision_tree_f as dtree
 import optimization as opt
 
@@ -98,22 +97,6 @@ def getRatingMatrix(filename):
         return ratingMatrix, opinionMatrix,opinionMatrix_I
 
 
-# Function to calculate the RMSE Error between the predicted and actual rating
-'''def getRMSE(Actual_Rating, Predicted_Rating):
-    # Calculate the Root Mean Squared Error(RMSE)
-    rmse = 0.0
-    for i in range(len(Actual_Rating)):
-        for j in range(len(Actual_Rating[0])):
-            if Actual_Rating[i][j] > 0:
-                rmse = rmse + pow((Actual_Rating[i][j] - Predicted_Rating[i][j]), 2)
-
-    rmse = rmse * 1.0 / (len(Actual_Rating) * len(Actual_Rating[0]))  # recorrect
-    rmse = math.sqrt(rmse)
-
-    # Print and return the RMSE
-    print('Root Mean Squared Error(RMSE) = ', rmse)
-    return rmse'''
-
 
 '''def getNDCG(predict, real, N):
     NDCG = []
@@ -142,27 +125,59 @@ def getRatingMatrix(filename):
     ndcg = sum/len(NDCG)
     return ndcg'''
 
-# Used to randomly split the data by row
-def random_split(rating_matrix, opinion_matrix):
-    # Split the data set into 75% and 25%
-    SPLIT_PERCENT = 0.75
 
-    # Get Random Indices to shuffle the rows around
-    indices = np.random.permutation(rating_matrix.shape[0])
-    # Random lists of row indices
+def MF(k, learningRate, lmd_u, lmd_v, noOfIteration, file_training):
+### k is the latent dimension for matrix factorization.
+### learningRate is the  rate for parameter updating,
+### lamda_user, lamda_item are regularization  parameters,
+### noOfIteration is an integer specifying the number of iterations to run,
+### file_training is a string specifying the file directory for training dataset.
+    file = open(file_training, 'r')
+    lines = file.readlines()
+    numberOfUsers = 0
+    numberOfItems = 0
+    userID = np.zeros((len(lines)),dtype=int)
+    itemID = np.zeros((len(lines)),dtype=int)
+    rating = np.zeros((len(lines)))
+    count = 0
 
-    # Get the number of rows
-    num_rows = len(rating_matrix[:, 0])
+    print("Preparing data.........")
+    for line in lines:
+        listOfLine = line.split("\n")[0].split(",")
+        userID[count] = int(listOfLine[0])
+        #print(userID[count])
+        if userID[count]+1 > numberOfUsers:
+            numberOfUsers = userID[count]+1
+        itemID[count] = int(listOfLine[1])
+        #print(itemID[count])
+        if itemID[count]+1 > numberOfItems:
+            numberOfItems = itemID[count]+1
+        rating[count] = float(listOfLine[2])
+        count = count+1
 
-    # Get the indices for training and testing sets
-    training_indices, test_indices = indices[: int(SPLIT_PERCENT * num_rows)], indices[int(SPLIT_PERCENT * num_rows):]
+    #### Inialization for the latent model.
+    user_vectors = np.random.rand(int(numberOfUsers),k)
+    item_vectors = np.random.rand(int(numberOfItems),k)
 
-    # return the training and the test set
-    return rating_matrix[training_indices, :], rating_matrix[test_indices, :], opinion_matrix[training_indices, :], opinion_matrix[test_indices,:]
+    #### parameter update by Stochastic Gradient Descent
+    print("Calculating error")
+    error = np.zeros((noOfIteration))
+    for i in range (noOfIteration):
+        print("Iteration times: ", i)
+        for j in range(len(lines)):
+            user_vectors[userID[j],:] = user_vectors[userID[j], :] + learningRate*((rating[j] - np.dot(user_vectors[userID[j],:], item_vectors[itemID[j],:]))*item_vectors[itemID[j], :]-lmd_u*user_vectors[userID[j], :])
+            item_vectors[itemID[j],:] = item_vectors[itemID[j], :] + learningRate*((rating[j] - np.dot(user_vectors[userID[j],:], item_vectors[itemID[j],:]))*user_vectors[userID[j], :]-lmd_v*item_vectors[itemID[j], :])
+
+        for j in range (len(lines)):
+            temp = rating[j] - np.dot(user_vectors[userID[j], :], item_vectors[itemID[j], :])
+            error[i] = error[i] + temp*temp
+        #error[i] = math.sqrt(error[i])/len(lines)
+        print(error[i])
+    return user_vectors, item_vectors
 
 
 # Returns the rating Matrix with approximated ratings for all users for all items using fMf
-def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH):
+def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH, File):
     # Save and print the Number of Users and Movies
     NUM_USERS = rating_matrix.shape[0]
     NUM_MOVIES = rating_matrix.shape[1]
@@ -173,18 +188,16 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
     print("Number of Latent Factors: ", NUM_OF_FACTORS)
 
     # Create the user and item profile vector of appropriate size.
-    # Initialize the item vectors randomly, check the random generation
-    user_vectors = np.random.rand(NUM_USERS, NUM_OF_FACTORS)
-    item_vectors = np.random.rand(NUM_MOVIES, NUM_OF_FACTORS)
+    # Initialize the item vectors according to MF
+    user_vectors ,item_vectors = MF(20, 0.05, 0.02, 0.02, 100, File)
+    #user_vectors = np.random.rand(NUM_USERS, NUM_OF_FACTORS)
+    #item_vectors = np.random.rand(NUM_MOVIES, NUM_OF_FACTORS)
 
     i = 0
-
     print("Entering Main Loop of alternateOptimization")
-
     decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
-
     # Do converge Check
-    while i < 20:
+    while i < 5:
         # Create the decision Tree based on item_vectors
         print("Creating Tree.. for i = ", i, "for user")
         decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
@@ -204,26 +217,16 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
         item_vectors = decTreeI.getVectors_f(opinion_matrix_I, NUM_OF_FACTORS)
 
         # Calculate Error for Convergence check
-        error_u = 0
-        for iteri in range(NUM_USERS):
-            for iterj in range(NUM_OF_FACTORS):
-                du = user_vectors[iteri][iterj] - user_vectors_before[iteri][iterj]
-                error_u = error_u + du * du
-        error_u = math.sqrt(error_u)
-        error_v = 0
-        for iteri in range(NUM_MOVIES):
-            for iterj in range(NUM_OF_FACTORS):
-                dv = item_vectors[iteri][iterj] - item_vectors_before[iteri][iterj]
-                error_v = error_v + dv * dv
-        error_v = math.sqrt(error_v)
-        print("error_u ", error_u)
-        print("error_v ", error_v)
-        if error_v < 0.1:
-            if error_u < 0.1:
-                break
+        Pred_before = np.dot(user_vectors_before, item_vectors_before.T)
+        Pred = np.dot(user_vectors, item_vectors.T)
+        Error = Pred_before - Pred
+        Error = Error[np.nonzero(Error)]
+        error = np.dot(Error, Error)
+        if error < 0.1:
+            break
         i = i + 1
 
-    return decTree, decTreeI, item_vectors.T
+    return decTree, decTreeI
 
 
 def printTopKMovies(test, predicted, K):
@@ -251,60 +254,38 @@ def printTopKMovies(test, predicted, K):
 
 if __name__ == "__main__":
     # Get the Data
-    (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix("test.txt")
-
-    print("Dimensions of the Dataset: ", rating_matrix.shape)
-    train_rating = rating_matrix
-
-    # Split the data 80-20 into training and testing dataset
-    #(train_r, test_r, train_o, test_o,) = random_split(rating_matrix, opinion_matrix)
-    #print("Dimensions of the Training Set: ", train_r.shape)
-    #print("Dimensions of the Testing Set: ", test_r.shape)
-    num_user,num_item = rating_matrix.shape
-    num_test = int(0.2*num_user*num_item)
-    print("Number of test set: ",num_test)
-    index_row = []
-    index_col = []
-    np.random.seed(0)
-    for i in range(num_test):
-        c1 = np.random.randint(0, num_item * num_user)
-        u1,i1 = c1 // num_item, c1 % num_item
-        index_row.append(u1)
-        index_col.append(c1)
-        train_rating[u1][i1] = 0
-
-    test_indices = (np.array(index_row), np.array(index_col))
-
-    # Set the number of Factors
+    File = "test_train.txt"
+    (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix(File)
+    print("Dimensions of the training dataset: ", rating_matrix.shape)
+       # Set the number of Factors
     NUM_OF_FACTORS = 20
     MAX_DEPTH = 6
 
     # Build decision tree on training set
-    (decisionTree, decisionTreeI, item_vector) = alternateOptimization(opinion_matrix, opinion_matrixI, train_rating, NUM_OF_FACTORS, MAX_DEPTH)
-    np.savetxt('item_vector.txt', item_vector, fmt='%0.8f')
+    (decisionTree, decisionTreeI) = alternateOptimization(opinion_matrix, opinion_matrixI, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH, File)
+    TestFile = "test_test.txt"
+    (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
+    item_vectors = decisionTreeI.getVectors_f(test_opinionI, NUM_OF_FACTORS)
+    np.savetxt('/results/item_vector.txt', item_vectors, fmt='%0.8f')
     # Traverse the tree with the opinion to get user_profile
-    user_vectors = decisionTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
-    np.savetxt('user_vectors.txt', user_vectors, fmt='%0.8f')
-    Predicted_Rating = np.dot(user_vectors, item_vector)
-    np.savetxt("rating_predict.txt", Predicted_Rating, fmt='%0.8f')
-    test_r = rating_matrix[test_indices]
-    Predicted_Rating = Predicted_Rating[test_indices]
+    user_vectors = decisionTree.getVectors_f(test_opinion, NUM_OF_FACTORS)
+    np.savetxt('/results/user_vectors.txt', user_vectors, fmt='%0.8f')
+    Predicted_Rating = np.dot(user_vectors, item_vectors.T)
+    np.savetxt('/results/rating_predict.txt', Predicted_Rating, fmt='%0.8f')
+
     # print("Predicted_Rating for Test: ", Predicted_Rating)
     # print("Test Rating: ", test)
-    '''RMSE = getRMSE(test_r, Predicted_Rating)
-    RMSE = np.array([RMSE])
-    NDCG = getNDCG(Predicted_Rating, test_r, 10)
+    '''NDCG = getNDCG(Predicted_Rating, test_r, 10)
     print("NDCG@10: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 20)
     print("NDCG@20: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 50)
-    print("NDCG@50: ", NDCG)
-    np.savetxt("RMSE.txt", RMSE,fmt="%0.8f")'''
+    print("NDCG@50: ", NDCG)'''
     print("print user tree")
     decisionTree.printtree(decisionTree.root)
     print("print item tree")
+
     decisionTree.printtree(decisionTreeI.root)
 
     # Top K new recommendations:
     # printTopKMovies(test_r, Predicted_Rating, 5)
-
