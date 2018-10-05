@@ -6,8 +6,6 @@ import random
 lmd_BPR = 100
 lmd_u = 1
 lmd_v = 1
-NUM_USER = 7920
-NUM_ITEM = 13428
 
 
 def lossfunction_all(rating_matrix, movie_vectors, user_vectors, flag):
@@ -99,9 +97,9 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors):
 
 
 def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
-    # user_vector is len(indices)*K matrix
-    # Stores the user profile vectors
-    user_vector = np.random.rand(K)
+    # user_vector is 1*K vector
+    np.random.seed(0)
+    user_vector = np.random.random(size = current_vector.shape)
     index_matrix = rating_matrix[indices]
     num_iter = 20
     eps = 1e-8
@@ -127,7 +125,8 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
 
 
 def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
-    movie_vector = np.random.rand(K)
+    np.random.seed(0)
+    movie_vector = np.random.random(size = current_vector.shape)
     rating_matrix = rating_matrix[:, indices]
     num_iter = 1000
     eps = 1e-8
