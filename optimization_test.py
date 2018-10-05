@@ -323,30 +323,11 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
     dislike_vector = np.zeros(K)
     unknown_vector = np.zeros(K)
     value = 0.0
-    print(like.shape)
-    print(dislike.shape)
-    print(unknown.shape)
 
     if len(indices_like) > 0:
         like_vector = cf_user(rating_matrix, movie_vectors, current_vector, indices_like, K)
         like_vector = np.repeat(like_vector.reshape(1, -1), len(indices_like), axis=0)
-        t1 = time.time()
         pre_like = np.dot(like_vector, movie_vectors.T)
-        t2 = time.time()
-
-        # test cuda
-        test_like = np.zeros(like.shape)
-        griddim = (like.shape[0] // blockdim[0] + 1, like.shape[1] // blockdim[1] + 1)
-        t3 = time.time()
-        matmul_cuda[griddim, blockdim](like_vector, movie_vectors.T, test_like)
-        # fast_matmul[griddim, blockdim](like_vector, movie_vectors.T, test_like)
-        t4 = time.time()
-        # end test cuda
-        print("CPU:", t2 - t1)
-        print("GPU:", t3 - t2)
-        print("GPU:", t4 - t3)
-        print((test_like - pre_like).sum())
-
         Err_like = (pre_like - like)[np.nonzero(like)]
         value += np.dot(Err_like, Err_like)
     # t2 = time.time()
@@ -366,7 +347,6 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
         Err_unknown = (pre_unknown - unknown)[np.nonzero(unknown)]
         value += np.dot(Err_unknown, Err_unknown)
     # t2 = time.time()
-    print("Time used for error calculation: ", t2 - t1)
     lkv_l = like_vector[np.nonzero(like_vector)]
     dlkv_l = dislike_vector[np.nonzero(dislike_vector)]
     unkv_l = unknown_vector[np.nonzero(unknown_vector)]
@@ -410,8 +390,6 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
                 diff = vec_inner(unknown_vector[u1], movie_vectors[i1] - movie_vectors[i2])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
-
-
     print(value)
     return value
 
