@@ -1,22 +1,23 @@
-#Import the Required Libraries
-import optimization as opt
+# Import the Required Libraries
+import optimization_test as opt
 import multiprocessing as mp
 import autograd.numpy as np
+import time
 
 
 # Split the users into Like, Dislike and Unknown Users by user-feature opinion
 def split(data, feature_index):  # data should be opinion matrix
-	# Get the indices for the when the opinion value is 1
-	indices_like = np.where(data[:, feature_index] == 1.0)[0]
+    # Get the indices for the when the opinion value is 1
+    indices_like = np.where(data[:, feature_index] == 1.0)[0]
 
-	# Get the indices for the when the opinion value is -1
-	indices_dislike = np.where(data[:, feature_index] == -1.0)[0]
+    # Get the indices for the when the opinion value is -1
+    indices_dislike = np.where(data[:, feature_index] == -1.0)[0]
 
-	# Get the indices for the when the opinion value is 0
-	indices_unknown = np.where(data[:, feature_index] == 0)[0]
+    # Get the indices for the when the opinion value is 0
+    indices_unknown = np.where(data[:, feature_index] == 0)[0]
 
-	return indices_like, indices_dislike, indices_unknown
-	# return data[indices_like, :], data[indices_dislike, :], data[indices_unknown, :]
+    return indices_like, indices_dislike, indices_unknown
+    # return data[indices_like, :], data[indices_dislike, :], data[indices_unknown, :]
 
 
 # This class represents each Node of the Decision Tree
@@ -63,13 +64,14 @@ class Tree:
         if current_node == None:
             print("None")
             return
-        print("Depth of current node:", current_node.depth, end=" ")
+
+        print("Depth of current node:", current_node.depth)
         print("Split feature of current node: ", current_node.feature_index)
-        print("like",end=" ")
+        print("like")
         self.printtree(current_node.like)
         print("dislike", end=" ")
         self.printtree(current_node.dislike)
-        print("unknown",end=" ")
+        print("unknown", end=" ")
         self.printtree(current_node.unknown)
 
     def getVectors_f(self, opinion_matrix, K):
@@ -107,42 +109,42 @@ class Tree:
 
         # Calulate the Error Before the Split
         print("Calculate error")
-        error_before = opt.lossfunction_all(rating_matrix, item_vectors, current_node.vector,1)
+        error_before = opt.lossfunction_all(rating_matrix, item_vectors, current_node.vector, 1)
 
         print("Error Before: ", error_before)
         # Create a numy_array to hold the split_criteria Values
         split_values = np.zeros(len(opinion_matrix[0]))
         params = {}
-        pool = mp.Pool()
+        # pool = mp.Pool(20)
 
         for feature_index in range(len(opinion_matrix[0])):
             # Split the rating_matrix into like, dislike and unknown
             (indices_like, indices_dislike, indices_unknown) = split(opinion_matrix, feature_index)
 
-            #print(len(indices_like))
-            # print(indices_like)
-            #print(len(indices_dislike))
-            # print(indices_dislike)
-            #print(len(indices_unknown))
-            # print(indices_unknown)
             params[feature_index] = []
             params[feature_index].extend((rating_matrix, item_vectors, current_node.vector, indices_like, indices_dislike, indices_unknown, K))
-
-            #print("Split the data into like, dislike and unknown for feature", feature_index)
 
         # Calculate the split criteria value
         print("Calculating the split criteria value")
         results = []
-        for feature_index in range(len(opinion_matrix[0])):
-            result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
-            # result = opt.cal_splitvalue(params[feature_index][0],params[feature_index][1],params[feature_index][2],params[feature_index][3],params[feature_index][4],params[feature_index][5],params[feature_index][6])
-            results.append(result)
 
         for feature_index in range(len(opinion_matrix[0])):
-            # split_values[feature_index] = results[feature_index]
-            split_values[feature_index] = results[feature_index].get()
-        pool.close()
-        pool.join()
+            print(feature_index)
+            start = time.time()
+            # result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
+            result = opt.cal_splitvalue(params[feature_index][0], params[feature_index][1], params[feature_index][2],
+                                        params[feature_index][3], params[feature_index][4], params[feature_index][5],
+                                        params[feature_index][6])
+            results.append(result)
+            done = time.time()
+            print("Time used to create one feature: {}".format(done - start))
+
+        for feature_index in range(len(opinion_matrix[0])):
+            # split_values[feature_index] = results[feature_index].get()
+            split_values[feature_index] = results[feature_index]
+
+        # pool.close()
+        # pool.join()
 
         bestFeature = np.argmin(split_values)
         print("bestFeature index: ", bestFeature)
@@ -193,7 +195,8 @@ class Tree:
             current_node.unknown.vector = unknown_vector
             if len(unknown) != 0:
                 self.fitTree_U(current_node.unknown, unknown_op, unknown, item_vectors, K)
-        else: print("can't spilt")
+        else:
+            print("can't spilt")
 
     def fitTree_I(self, current_node, opinion_matrix, rating_matrix, user_vectors, K):
         # rating_matrix only consists of rows which are users corresponding to the current Node
@@ -217,28 +220,21 @@ class Tree:
             # Split the rating_matrix into like, dislike and unknown
             (indices_like, indices_dislike, indices_unknown) = split(opinion_matrix, feature_index)
 
-            #print(len(indices_like))
-            # print(indices_like)
-            #print(len(indices_dislike))
-            # print(indices_dislike)
-            #print(len(indices_unknown))
-            # print(indices_unknown)
             params[feature_index] = []
             params[feature_index].extend((rating_matrix, user_vectors, current_node.vector, indices_like, indices_dislike, indices_unknown, K))
-
-            #print("Split the data into like, dislike and unknown for feature", feature_index)
 
         # Calculate the split criteria value
         print("Calculating the split criteria value")
         results = []
         for feature_index in range(len(opinion_matrix[0])):
-            #result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
-            result = opt.cal_splitvalueI(params[feature_index][0],params[feature_index][1],params[feature_index][2], params[feature_index][3],params[feature_index][4],params[feature_index][5],params[feature_index][6])
+            # result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
+            result = opt.cal_splitvalueI(params[feature_index][0], params[feature_index][1], params[feature_index][2],
+                                         params[feature_index][3], params[feature_index][4], params[feature_index][5],
+                                         params[feature_index][6])
             results.append(result)
 
         for feature_index in range(len(opinion_matrix[0])):
             split_values[feature_index] = results[feature_index]
-            #split_values[feature_index] = results[feature_index].get()
         pool.close()
         pool.join()
 
@@ -292,4 +288,5 @@ class Tree:
             current_node.unknown.vector = unknown_vector
             if len(unknown_op) != 0:
                 self.fitTree_I(current_node.unknown, unknown_op, unknown, user_vectors, K)
-        else: print("can't spilt")
+        else:
+            print("can't spilt")
