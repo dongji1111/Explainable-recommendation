@@ -98,17 +98,20 @@ def getRatingMatrix(filename):
 
 
 
-'''def getNDCG(predict, real, N):
+def getNDCG(predict, real, N):
     NDCG = []
     predict = np.array(predict)
     real = np.array(real)
+    fout = open('reclist.txt','w')
     for i in range(len(predict)):
         arg_pre = np.argsort(-predict[i])
         rec_pre = real[i][arg_pre]
+        fout.write('user' + i + 'value of real rating with predict ranking :' + rec_pre)
         rec_pre = [rec_pre[k] for k in range(N)] # value of real rating with Top N predict recommendation
         #rec_pre = np.array(rec_pre)
         arg_real = np.argsort(-real[i]) # ideal ranking of real rating with Top N
         rec_real = real[i][arg_real]
+        fout.write('user' + i + 'value of real rating with ideal ranking :' + rec_real)
         rec_real = [rec_real[k] for k in range(N)]
         #print("rec_pre",rec_pre)
         #print("rec_real",rec_real)
@@ -123,7 +126,7 @@ def getRatingMatrix(filename):
     for i in range(len(NDCG)):
         sum = sum +NDCG[i]
     ndcg = sum/len(NDCG)
-    return ndcg'''
+    return ndcg
 
 
 def MF(k, learningRate, lmd_u, lmd_v, noOfIteration, file_training):
@@ -156,6 +159,7 @@ def MF(k, learningRate, lmd_u, lmd_v, noOfIteration, file_training):
         count = count+1
 
     #### Inialization for the latent model.
+    np.random.seed(0)
     user_vectors = np.random.rand(int(numberOfUsers),k)
     item_vectors = np.random.rand(int(numberOfItems),k)
 
@@ -189,7 +193,7 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
 
     # Create the user and item profile vector of appropriate size.
     # Initialize the item vectors according to MF
-    user_vectors ,item_vectors = MF(20, 0.05, 0.02, 0.02, 100, File)
+    user_vectors ,item_vectors = MF(20, 0.05, 0.02, 0.02, 50, File)
     #user_vectors = np.random.rand(NUM_USERS, NUM_OF_FACTORS)
     #item_vectors = np.random.rand(NUM_MOVIES, NUM_OF_FACTORS)
 
@@ -207,6 +211,10 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
         # Calculate the User vectors using dtree
         user_vectors_before = user_vectors
         user_vectors = decTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
+        # adding personalized term
+        for index in range(len(rating_matrix)):
+            indice = np.array([index])
+            user_vectors[index] = opt.cf_user(rating_matrix,item_vectors,user_vectors[index],indice,NUM_OF_FACTORS)
 
         print("Creating Tree.. for i = ", i, "for item")
         decTreeI = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
@@ -215,6 +223,9 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
         print("Getting the item vectors from tree")
         item_vectors_before = item_vectors
         item_vectors = decTreeI.getVectors_f(opinion_matrix_I, NUM_OF_FACTORS)
+        for index in range(len(rating_matrix[0])):
+            indice = np.array([index])
+            item_vectors[index] = opt.cf_item(rating_matrix,user_vectors,item_vectors[index],indice,NUM_OF_FACTORS)
 
         # Calculate Error for Convergence check
         Pred_before = np.dot(user_vectors_before, item_vectors_before.T)
@@ -226,7 +237,7 @@ def alternateOptimization(opinion_matrix,opinion_matrix_I, rating_matrix, NUM_OF
             break
         i = i + 1
 
-    return decTree, decTreeI
+    return decTree, decTreeI, user_vectors, item_vectors
 
 
 def printTopKMovies(test, predicted, K):
@@ -254,7 +265,7 @@ def printTopKMovies(test, predicted, K):
 
 if __name__ == "__main__":
     # Get the Data
-    File = "test_train.txt"
+    File = "yelp_train.txt"
     (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix(File)
     print("Dimensions of the training dataset: ", rating_matrix.shape)
        # Set the number of Factors
@@ -262,16 +273,14 @@ if __name__ == "__main__":
     MAX_DEPTH = 6
 
     # Build decision tree on training set
-    (decisionTree, decisionTreeI) = alternateOptimization(opinion_matrix, opinion_matrixI, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH, File)
-    TestFile = "test_test.txt"
-    (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
-    item_vectors = decisionTreeI.getVectors_f(test_opinionI, NUM_OF_FACTORS)
-    np.savetxt('/results/item_vector.txt', item_vectors, fmt='%0.8f')
-    # Traverse the tree with the opinion to get user_profile
-    user_vectors = decisionTree.getVectors_f(test_opinion, NUM_OF_FACTORS)
-    np.savetxt('/results/user_vectors.txt', user_vectors, fmt='%0.8f')
+    (decisionTree, decisionTreeI, user_vectors, item_vectors) = alternateOptimization(opinion_matrix, opinion_matrixI, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
+    np.savetxt('/results/item_vector.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('/results/user_vectors.txt', user_vectors, fmt='%0.8f')
     np.savetxt('/results/rating_predict.txt', Predicted_Rating, fmt='%0.8f')
+    TestFile = "yelp_test.txt"
+    (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
+    Predicted_Rating[np.where[rating_matrix > 0]] = 0.0
 
     # print("Predicted_Rating for Test: ", Predicted_Rating)
     # print("Test Rating: ", test)
@@ -284,7 +293,6 @@ if __name__ == "__main__":
     print("print user tree")
     decisionTree.printtree(decisionTree.root)
     print("print item tree")
-
     decisionTree.printtree(decisionTreeI.root)
 
     # Top K new recommendations:
