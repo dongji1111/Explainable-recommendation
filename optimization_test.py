@@ -72,9 +72,9 @@ def get_user_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
         if rating_matrix[u1, i1] > rating_matrix[u2, i2]:
             diff = 0
             for i in range(len(user_vector)):
-                diff += - user_vector[i] * (movie_vectors[i1, i] + movie_vectors[i2, i])
-                delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
-                # delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * np.exp(diff) / (1 + np.exp(diff))
+                diff += - user_vector[i] * (movie_vectors[i1, i] - movie_vectors[i2, i])
+            delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
+            # delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * np.exp(diff) / (1 + np.exp(diff))
 
     return delta_u
 
@@ -110,7 +110,7 @@ def selfgradu(rating_matrix, movie_vectors, current_vector, user_vector):
 
 
 @jit
-def get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vectors, movie_vector, lmd_u, lmd_BPR):
+def get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vectors, movie_vector, lmd_v, lmd_BPR):
     num_user, num_item = rating_matrix.shape
     delta_v = 0
     for sp in selected_points:
@@ -130,8 +130,8 @@ def get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
         if rating_matrix[u1, i1] > rating_matrix[u2, i2]:
             diff = 0
             for i in range(len(movie_vector)):
-                diff += - movie_vector[i] * (user_vectors[u1, i] + user_vectors[u2, i])
-                delta_v += lmd_BPR * (user_vectors[u2, :] - user_vectors[u1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
+                diff += - movie_vector[i] * (user_vectors[u1, i] - user_vectors[u2, i])
+            delta_v += lmd_BPR * (user_vectors[u2, :] - user_vectors[u1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
 
     return delta_v
 
@@ -148,7 +148,7 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors):
 
     selected_points = np.random.randint(0, num_item * num_user, num_point)
     selected_pairs = np.random.randint(0, num_item * num_user, num_pair * 2)
-    delta_v = get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vectors, movie_vector, lmd_u, lmd_BPR)
+    delta_v = get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vectors, movie_vector, lmd_v, lmd_BPR)
 
     # for i in range(num_point):
     #     c1 = np.random.randint(0, num_item * num_user)
@@ -292,14 +292,6 @@ def sum_reduce(a, b):
     return a + b
 
 
-@cuda.jit
-def get_error_cuda(rating, pred, r):
-    x, y = cuda.grid(2)
-
-    if x < rating.shape[0] and y < rating.shape[1] and rating[x, y] != 0:
-        r[x, y] = (rating[x, y] - pred[x, y]) ** 2
-
-
 @jit
 def calculate_error(user_vector, movie_vectors, pred, rating):
     for i in range(len(user_vector)):
@@ -330,6 +322,7 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
         pre_like = np.dot(like_vector, movie_vectors.T)
         Err_like = (pre_like - like)[np.nonzero(like)]
         value += np.dot(Err_like, Err_like)
+        # value += sum_reduce(np.square(Err_like))
     # t2 = time.time()
     if len(indices_dislike) > 0:
         # print(indices_dislike)
