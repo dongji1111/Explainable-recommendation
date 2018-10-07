@@ -1,9 +1,10 @@
 # Import the Required Libraries
-import autograd.numpy as np
+import numpy as np
 # from autograd import grad
 # import random
 import time
 from numba import jit, cuda, prange, float32
+from numpy import linalg as LA
 
 lmd_BPR = 100
 lmd_u = 1
@@ -73,8 +74,9 @@ def get_user_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
             diff = 0
             for i in range(len(user_vector)):
                 diff += - user_vector[i] * (movie_vectors[i1, i] - movie_vectors[i2, i])
-            delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
-            # delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * np.exp(diff) / (1 + np.exp(diff))
+            vec_diff = 0
+            vec_diff = movie_vectors[i2] - movie_vectors[i1]
+            delta_u += lmd_BPR * vec_diff * pow(EXP, diff) / (1 + pow(EXP, diff))
 
     return delta_u
 
@@ -92,20 +94,6 @@ def selfgradu(rating_matrix, movie_vectors, current_vector, user_vector):
     selected_points = np.random.randint(0, num_item * num_user, num_point)
     selected_pairs = np.random.randint(0, num_item * num_user, num_pair * 2)
     delta_u = get_user_gradient(selected_points, selected_pairs, rating_matrix, user_vector, movie_vectors, lmd_u, lmd_BPR)
-    # for i in range(num_point):
-    #     c1 = np.random.randint(0, num_item * num_user)
-    #     u1, i1 = c1 // num_item, c1 % num_item
-    #     if rating_matrix[u1][i1] != 0:
-    #         delta_u += -2 * (rating_matrix[u1][i1] - np.dot(user_vector, movie_vectors[i1])) * movie_vectors[i1] + 2 * lmd_u * user_vector
-
-    # for i in range(num_pair):
-    #     c1, c2 = np.random.randint(0, num_item * num_user, 2)
-    #     u1, i1 = c1 // num_item, c1 % num_item
-    #     u2, i2 = c2 // num_item, c2 % num_item
-    #     if rating_matrix[u1][i1] > rating_matrix[u2][i2]:
-    #         diff = np.dot(user_vector.T, movie_vectors[i1, :]) - np.dot(user_vector.T, movie_vectors[i2, :])
-    #         diff = -diff
-    #         delta_u += lmd_BPR * (movie_vectors[i2, :] - movie_vectors[i1, :]) * np.exp(diff) / (1 + np.exp(diff))
     return delta_u
 
 
@@ -130,8 +118,10 @@ def get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
         if rating_matrix[u1, i1] > rating_matrix[u2, i2]:
             diff = 0
             for i in range(len(movie_vector)):
-                diff += - movie_vector[i] * (user_vectors[u1, i] - user_vectors[u2, i])
-            delta_v += lmd_BPR * (user_vectors[u2, :] - user_vectors[u1, :]) * pow(EXP, diff) / (1 + pow(EXP, diff))
+                diff += -movie_vector[i] * (user_vectors[u1, i] - user_vectors[u2, i])
+            vec_diff = 0
+            vec_diff = user_vectors[u2] - user_vectors[u1]
+            delta_v += lmd_BPR * vec_diff * pow(EXP, diff) / (1 + pow(EXP, diff))
 
     return delta_v
 
@@ -150,19 +140,6 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors):
     selected_pairs = np.random.randint(0, num_item * num_user, num_pair * 2)
     delta_v = get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vectors, movie_vector, lmd_v, lmd_BPR)
 
-    # for i in range(num_point):
-    #     c1 = np.random.randint(0, num_item * num_user)
-    #     u1, i1 = c1 // num_item, c1 % num_item
-    #     if rating_matrix[u1][i1] != 0:
-    #         delta_v += -2 * (rating_matrix[u1][i1] - np.dot(user_vectors[u1], movie_vector)) * user_vectors[u1] + 2 * lmd_v * movie_vector
-    # for i in range(num_pair):
-    #     c1, c2 = np.random.randint(0, num_item * num_user, 2)
-    #     u1, i1 = c1 // num_item, c1 % num_item
-    #     u2, i2 = c2 // num_item, c2 % num_item
-    #     if rating_matrix[u1][i1] > rating_matrix[u2][i2]:
-    #         diff = np.dot(user_vectors[u1].T, movie_vector) - np.dot(user_vectors[u2].T, movie_vector)
-    #         diff = -diff
-    #         delta_v += lmd_BPR * (user_vectors[u2, :] - user_vectors[u1, :]) * np.exp(diff) / (1 + np.exp(diff))
     return delta_v
 
 
@@ -192,7 +169,7 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
 def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
     movie_vector = np.random.rand(K)
     rating_matrix = rating_matrix[:, indices]
-    num_iter = 1000
+    num_iter = 20
     eps = 1e-8
     lr = 0.1
     sum_square_v = eps + np.zeros_like(movie_vector)
@@ -238,7 +215,7 @@ def matmul_cuda(A, B, C):
 #         vec_3[i] = vec_1[i] * vec_2[i]
 #     cuda.syncthreads()
 
-TPB = 16
+# TPB = 16
 
 
 @cuda.jit
@@ -322,8 +299,7 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
         pre_like = np.dot(like_vector, movie_vectors.T)
         Err_like = (pre_like - like)[np.nonzero(like)]
         value += np.dot(Err_like, Err_like)
-        # value += sum_reduce(np.square(Err_like))
-    # t2 = time.time()
+
     if len(indices_dislike) > 0:
         # print(indices_dislike)
         dislike_vector = cf_user(rating_matrix, movie_vectors, current_vector, indices_dislike, K)
@@ -340,13 +316,13 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
         Err_unknown = (pre_unknown - unknown)[np.nonzero(unknown)]
         value += np.dot(Err_unknown, Err_unknown)
     # t2 = time.time()
-    lkv_l = like_vector[np.nonzero(like_vector)]
-    dlkv_l = dislike_vector[np.nonzero(dislike_vector)]
-    unkv_l = unknown_vector[np.nonzero(unknown_vector)]
-    mov_l = movie_vectors[np.nonzero(movie_vectors)]
+    lkv_l = like_vector.flatten()
+    dlkv_l = dislike_vector.flatten()
+    unkv_l = unknown_vector.flatten()
+    mov_l = movie_vectors.flatten()
 
-    value += lmd_u * (vec_inner(lkv_l, lkv_l) + vec_inner(dlkv_l, dlkv_l) + vec_inner(unkv_l, unkv_l))
-    value += lmd_v * vec_inner(mov_l, mov_l)
+    value += lmd_u * (np.dot(lkv_l, lkv_l) + np.dot(dlkv_l, dlkv_l) + np.dot(unkv_l, unkv_l))
+    value += lmd_v * np.dot(mov_l, mov_l)
 
     np.random.seed(0)
     num_pair = 20
@@ -358,7 +334,7 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if like[u1][i1] > like[u2][i2]:
-                diff = vec_inner(like_vector[u1], movie_vectors[i1] - movie_vectors[i2])
+                diff = np.dot(like_vector[u1], movie_vectors[i1] - movie_vectors[i2])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
 
@@ -369,7 +345,7 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if dislike[u1][i1] > dislike[u2][i2]:
-                diff = vec_inner(dislike_vector[u1], movie_vectors[i1] - movie_vectors[i2])
+                diff = np.dot(dislike_vector[u1], movie_vectors[i1] - movie_vectors[i2])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
 
@@ -380,10 +356,10 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if unknown[u1][i1] > unknown[u2][i2]:
-                diff = vec_inner(unknown_vector[u1], movie_vectors[i1] - movie_vectors[i2])
+                diff = np.dot(unknown_vector[u1], movie_vectors[i1] - movie_vectors[i2])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
-    print(value)
+    # print(value)
     return value
 
 
@@ -394,41 +370,36 @@ def cal_splitvalueI(rating_matrix, user_vectors, current_vector, indices_like, i
     like_vector = np.zeros(K)
     dislike_vector = np.zeros(K)
     unknown_vector = np.zeros(K)
-    value = 0
+    value = 0.0
 
     if len(indices_like) > 0:
-        # print(indices_like)
         like_vector = cf_item(rating_matrix, user_vectors, current_vector, indices_like, K)
-        like_vector = np.array([like_vector for i in range(len(indices_like))])
+        like_vector = np.repeat(like_vector.reshape(1, -1), len(indices_like), axis=0)
         pre_like = np.dot(user_vectors, like_vector.T)
-        Err_like = pre_like[np.nonzero(like)] - like[np.nonzero(like)]
-        value = value + np.dot(Err_like, Err_like)
-    # print(value)
+        Err_like = (pre_like - like)[np.nonzero(like)]
+        value += np.dot(Err_like, Err_like)
+
     if len(indices_dislike) > 0:
-        # print(indices_dislike)
         dislike_vector = cf_item(rating_matrix, user_vectors, current_vector, indices_dislike, K)
-        dislike_vector = np.array([dislike_vector for i in range(len(indices_dislike))])
+        dislike_vector = np.repeat(dislike_vector.reshape(1, -1), len(indices_dislike), axis=0)
         pre_dislike = np.dot(user_vectors, dislike_vector.T)
-        Err_dislike = pre_dislike[np.nonzero(dislike)] - dislike[np.nonzero(dislike)]
-        value = value + np.dot(Err_dislike, Err_dislike)
-    # print(value)
+        Err_like = (pre_dislike - dislike)[np.nonzero(dislike)]
+        value += np.dot(Err_like, Err_like)
 
     if len(indices_unknown) > 0:
-        # print(indices_unknown)
         unknown_vector = cf_item(rating_matrix, user_vectors, current_vector, indices_unknown, K)
-        unknown_vector = np.array([unknown_vector for i in range(len(indices_unknown))])
+        unknown_vector = np.repeat(unknown_vector.reshape(1, -1), len(indices_unknown), axis=0)
         pre_unknown = np.dot(user_vectors, unknown_vector.T)
-        Err_unknown = pre_unknown[np.nonzero(unknown)] - unknown[np.nonzero(unknown)]
-        value = value + np.dot(Err_unknown, Err_unknown)
-    # print(value)
+        Err_like = (pre_unknown - unknown)[np.nonzero(unknown)]
+        value += np.dot(Err_like, Err_like)
 
-    lkv_l = like_vector[np.nonzero(like_vector)]
-    dlkv_l = dislike_vector[np.nonzero(dislike_vector)]
-    unkv_l = unknown_vector[np.nonzero(unknown_vector)]
-    value = value + lmd_v * (np.dot(lkv_l, lkv_l) + np.dot(dlkv_l, dlkv_l) + np.dot(unkv_l, unkv_l))
+    lkv_l = like_vector.flatten()
+    dlkv_l = dislike_vector.flatten()
+    unkv_l = unknown_vector.flatten()
+    user_l = user_vectors.flatten()
 
-    user_l = user_vectors[np.nonzero(user_vectors)]
-    value = value + lmd_u * np.dot(user_l, user_l)
+    value += lmd_v * (np.dot(lkv_l, lkv_l) + np.dot(dlkv_l, dlkv_l) + np.dot(unkv_l, unkv_l))
+    value += lmd_u * np.dot(user_l, user_l)
 
     np.random.seed(0)
     num_pair = 20
@@ -439,8 +410,7 @@ def cal_splitvalueI(rating_matrix, user_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if like[u1][i1] > like[u2][i2]:
-                diff = np.dot(user_vectors[u1, :].T, like_vector[i1, :]) - np.dot(user_vectors[u2, :].T,
-                                                                                  like_vector[i2, :])
+                diff = np.dot(user_vectors[u1] - user_vectors[u2], like_vector[i1])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
 
@@ -451,8 +421,7 @@ def cal_splitvalueI(rating_matrix, user_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if dislike[u1][i1] > dislike[u2][i2]:
-                diff = np.dot(user_vectors[u1, :].T, dislike_vector[i1, :]) - np.dot(user_vectors[u2, :].T,
-                                                                                     dislike_vector[i2, :])
+                diff = np.dot(user_vectors[u1] - user_vectors[u2], dislike_vector[i1])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
 
@@ -463,9 +432,8 @@ def cal_splitvalueI(rating_matrix, user_vectors, current_vector, indices_like, i
             u1, i1 = c1 // num_item, c1 % num_item
             u2, i2 = c2 // num_item, c2 % num_item
             if unknown[u1][i1] > unknown[u2][i2]:
-                diff = np.dot(user_vectors[u1, :].T, unknown_vector[i1, :]) - np.dot(user_vectors[u2, :].T,
-                                                                                     unknown_vector[i2, :])
+                diff = np.dot(user_vectors[u1] - user_vectors[u2], unknown_vector[i1])
                 diff = -diff
                 value = value + lmd_BPR * np.log(1 + np.exp(diff))
-    print(value)
+    # print(value)
     return value
