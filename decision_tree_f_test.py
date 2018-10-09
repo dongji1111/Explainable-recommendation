@@ -102,23 +102,17 @@ class Tree:
         # rating_matrix only consists of rows which are users corresponding to the current Node
         # Check if the maxDepth is reached
         print("current depth of the tree", current_node.depth)
+        t1 = time.time()
         if current_node.depth > self.max_depth:
             return
         if len(rating_matrix) == 0:
             return
 
         # Calulate the Error Before the Split
-<<<<<<< HEAD
         # print("Calculate error")
         error_before = opt.lossfunction_all(rating_matrix, item_vectors, current_node.vector, 1)
 
         # print("Error Before: ", error_before)
-=======
-        print("Calculate error")
-        error_before = opt.lossfunction_all(rating_matrix, item_vectors, current_node.vector, 1)
-
-        print("Error Before: ", error_before)
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
         # Create a numy_array to hold the split_criteria Values
         split_values = np.zeros(len(opinion_matrix[0]))
         params = {}
@@ -134,30 +128,15 @@ class Tree:
         # Calculate the split criteria value
         print("Calculating the split criteria value")
         results = []
-<<<<<<< HEAD
-        t1 = time.time()
 
         for feature_index in range(len(opinion_matrix[0])):
             # print(feature_index)
             # start = time.time()
-=======
-
-        for feature_index in range(len(opinion_matrix[0])):
-            print(feature_index)
-            start = time.time()
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
             # result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
             result = opt.cal_splitvalue(params[feature_index][0], params[feature_index][1], params[feature_index][2],
                                         params[feature_index][3], params[feature_index][4], params[feature_index][5],
                                         params[feature_index][6])
             results.append(result)
-<<<<<<< HEAD
-            # done = time.time()
-            # print("Time used to create one feature: {}".format(done - start))
-=======
-            done = time.time()
-            print("Time used to create one feature: {}".format(done - start))
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
 
         for feature_index in range(len(opinion_matrix[0])):
             # split_values[feature_index] = results[feature_index].get()
@@ -168,11 +147,8 @@ class Tree:
 
         bestFeature = np.argmin(split_values)
         print("bestFeature index: ", bestFeature)
-<<<<<<< HEAD
         t2 = time.time()
         print("Time used to create the layer: ", t2 - t1)
-=======
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
 
         # Store the feature_index for the current_node
         current_node.feature_index = bestFeature
@@ -227,29 +203,20 @@ class Tree:
         # rating_matrix only consists of rows which are users corresponding to the current Node
         # Check if the maxDepth is reached
         print("current depth of the tree", current_node.depth)
+        t1 = time.time()
         if current_node.depth > self.max_depth:
             return
         if len(rating_matrix) == 0:
             return
 
         # Calulate the Error Before the Split
-<<<<<<< HEAD
-        # print("Calculate error")
-        error_before = opt.lossfunction_all(rating_matrix, current_node.vector, user_vectors, 0)
-        # print("Error Before: ", error_before)
-        # Create a numy_array to hold the split_criteria Values
-        split_values = np.zeros(len(opinion_matrix[0]))
-        params = {}
-        # pool = mp.Pool()
-=======
         print("Calculate error")
         error_before = opt.lossfunction_all(rating_matrix, current_node.vector, user_vectors, 0)
         print("Error Before: ", error_before)
         # Create a numy_array to hold the split_criteria Values
         split_values = np.zeros(len(opinion_matrix[0]))
         params = {}
-        pool = mp.Pool()
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
+        # pool = mp.Pool()
 
         for feature_index in range(len(opinion_matrix[0])):
             # Split the rating_matrix into like, dislike and unknown
@@ -260,10 +227,7 @@ class Tree:
 
         # Calculate the split criteria value
         print("Calculating the split criteria value")
-<<<<<<< HEAD
-        t1 = time.time()
-=======
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
+
         results = []
         for feature_index in range(len(opinion_matrix[0])):
             # result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
@@ -273,7 +237,6 @@ class Tree:
             results.append(result)
 
         for feature_index in range(len(opinion_matrix[0])):
-<<<<<<< HEAD
             # split_values[feature_index] = results[feature_index].get()
             split_values[feature_index] = results[feature_index]
         # pool.close()
@@ -283,14 +246,6 @@ class Tree:
         print("bestFeature index: ", bestFeature)
         t2 = time.time()
         print("Time used to create the layer: ", t2 - t1)
-=======
-            split_values[feature_index] = results[feature_index]
-        pool.close()
-        pool.join()
-
-        bestFeature = np.argmin(split_values)
-        print("bestFeature index: ", bestFeature)
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
 
         # Store the feature_index for the current_node
         current_node.feature_index = bestFeature

@@ -183,10 +183,7 @@ def MF(k, learningRate, lmd_u, lmd_v, noOfIteration, file_training):
         count = count + 1
 
     # Inialization for the latent model.
-<<<<<<< HEAD
     np.random.seed(0)
-=======
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
     user_vectors = np.random.rand(int(numberOfUsers), k)
     item_vectors = np.random.rand(int(numberOfItems), k)
 
@@ -194,36 +191,9 @@ def MF(k, learningRate, lmd_u, lmd_v, noOfIteration, file_training):
     print("Calculating error")
     error = np.zeros((noOfIteration))
     for i in range(noOfIteration):
-<<<<<<< HEAD
-        # print("Iteration times: ", i)
-        # start = time.time()
-        user_vectors, item_vectors, error[i] = update_vectors(rating, userID, itemID, user_vectors, item_vectors, k, learningRate, lmd_u, lmd_v)
-        # done1 = time.time()
-        # print("Time used to calculate one iteration: {}".format(done1 - start))
-        # print(user_vectors[0, 0])
-=======
-        print("Iteration times: ", i)
-        start = time.time()
-        user_vectors, item_vectors, error[i] = update_vectors(rating, userID, itemID, user_vectors, item_vectors, k, learningRate, lmd_u, lmd_v)
-        done1 = time.time()
-        print("Time used to calculate one iteration: {}".format(done1 - start))
-        print(user_vectors[0, 0])
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
 
-        # error[i] = get_error(rating, user_vectors, item_vectors, userID, itemID, k)
-        # for j in range(len(lines)):
-        #     temp = rating[j] - np.inner(user_vectors[userID[j], :], item_vectors[itemID[j], :])
-        #     error[i] = error[i] + temp * temp
-        # error[i] = math.sqrt(error[i])/len(lines)
-<<<<<<< HEAD
-        # done = time.time()
-        # print("Time used to calculate one iteration: {}".format(done - start))
-        # print(error[i])
-=======
-        done = time.time()
-        print("Time used to calculate one iteration: {}".format(done - start))
-        print(error[i])
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
+        user_vectors, item_vectors, error[i] = update_vectors(rating, userID, itemID, user_vectors, item_vectors, k, learningRate, lmd_u, lmd_v)
+
     return user_vectors, item_vectors
 
 
@@ -240,11 +210,7 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
 
     # Create the user and item profile vector of appropriate size.
     # Initialize the item vectors according to MF
-<<<<<<< HEAD
     user_vectors, item_vectors = MF(20, 0.05, 0.02, 0.02, 100, File)
-=======
-    user_vectors, item_vectors = MF(20, 0.05, 0.02, 0.02, 1, File)
->>>>>>> 6d0c0965c69a1779e4c4a31459d922c3b6978bf6
     # user_vectors = np.random.rand(NUM_USERS, NUM_OF_FACTORS)
     # item_vectors = np.random.rand(NUM_MOVIES, NUM_OF_FACTORS)
 
