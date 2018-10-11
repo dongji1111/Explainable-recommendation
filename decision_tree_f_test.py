@@ -232,13 +232,13 @@ class Tree:
         for feature_index in range(len(opinion_matrix[0])):
             # result = pool.apply_async(opt.cal_splitvalue, params[feature_index])
             print(feature_index)
-            t1 = time.time()
+            # t1 = time.time()
             result = opt.cal_splitvalueI(params[feature_index][0], params[feature_index][1], params[feature_index][2],
                                          params[feature_index][3], params[feature_index][4], params[feature_index][5],
                                          params[feature_index][6])
             results.append(result)
-            t2 = time.time()
-            print("Time used to calculate the feature:", t2 - t1)
+            # t2 = time.time()
+            # print("Time used to calculate the feature:", t2 - t1)
 
         for feature_index in range(len(opinion_matrix[0])):
             # split_values[feature_index] = results[feature_index].get()
