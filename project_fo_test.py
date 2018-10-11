@@ -1,10 +1,9 @@
-# Import the Required Libraries
-import autograd.numpy as np
-# import math
+import numpy as np
 import decision_tree_f_test as dtree
-# import optimization as opt
-import time
+# import time
 from numba import jit
+import optimization_test as opt
+import math
 
 
 def getRatingMatrix(filename):
@@ -99,32 +98,35 @@ def getRatingMatrix(filename):
         return ratingMatrix, opinionMatrix, opinionMatrix_I
 
 
-'''def getNDCG(predict, real, N):
+def getNDCG(predict, real, N):
     NDCG = []
     predict = np.array(predict)
     real = np.array(real)
+    fout = open('reclist.txt', 'w')
     for i in range(len(predict)):
         arg_pre = np.argsort(-predict[i])
         rec_pre = real[i][arg_pre]
-        rec_pre = [rec_pre[k] for k in range(N)] # value of real rating with Top N predict recommendation
-        #rec_pre = np.array(rec_pre)
-        arg_real = np.argsort(-real[i]) # ideal ranking of real rating with Top N
+        fout.write('user' + i + 'value of real rating with predict ranking :' + rec_pre)
+        rec_pre = [rec_pre[k] for k in range(N)]  # value of real rating with Top N predict recommendation
+        # rec_pre = np.array(rec_pre)
+        arg_real = np.argsort(-real[i])  # ideal ranking of real rating with Top N
         rec_real = real[i][arg_real]
+        fout.write('user' + i + 'value of real rating with ideal ranking :' + rec_real)
         rec_real = [rec_real[k] for k in range(N)]
-        #print("rec_pre",rec_pre)
-        #print("rec_real",rec_real)
+        # print("rec_pre",rec_pre)
+        # print("rec_real",rec_real)
         dcg = 0
         idcg = 0
         for j in range(N):
-            dcg = dcg + rec_pre[j]/math.log2(j+2)
-            idcg = idcg + rec_real[j]/math.log2(j+2)
-        NDCG.append(dcg/idcg)
+            dcg = dcg + rec_pre[j] / math.log2(j + 2)
+            idcg = idcg + rec_real[j] / math.log2(j + 2)
+        NDCG.append(dcg / idcg)
     print(NDCG)
     sum = 0
     for i in range(len(NDCG)):
-        sum = sum +NDCG[i]
-    ndcg = sum/len(NDCG)
-    return ndcg'''
+        sum = sum + NDCG[i]
+    ndcg = sum / len(NDCG)
+    return ndcg
 
 '''
 Use Numba.cuda to accelerate the matrix factorization
@@ -219,6 +221,7 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
     decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
     # Do converge Check
     while i < 5:
+
         # Create the decision Tree based on item_vectors
         print("Creating Tree.. for i = ", i, "for user")
         decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
@@ -228,6 +231,11 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         # Calculate the User vectors using dtree
         user_vectors_before = user_vectors
         user_vectors = decTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
+        # adding personalized term
+        for index in range(len(rating_matrix)):
+            indice = np.array([index])
+            user_vectors[index] = opt.cf_user(rating_matrix, item_vectors, user_vectors[index], indice,
+                                              NUM_OF_FACTORS)
 
         print("Creating Tree.. for i = ", i, "for item")
         decTreeI = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
@@ -236,18 +244,22 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Getting the item vectors from tree")
         item_vectors_before = item_vectors
         item_vectors = decTreeI.getVectors_f(opinion_matrix_I, NUM_OF_FACTORS)
+        for index in range(len(rating_matrix[0])):
+            indice = np.array([index])
+            item_vectors[index] = opt.cf_item(rating_matrix, user_vectors, item_vectors[index], indice,
+                                              NUM_OF_FACTORS)
 
         # Calculate Error for Convergence check
         Pred_before = np.dot(user_vectors_before, item_vectors_before.T)
         Pred = np.dot(user_vectors, item_vectors.T)
         Error = Pred_before - Pred
-        Error = Error[np.nonzero(Error)]
+        Error = Error.flatten()
         error = np.dot(Error, Error)
         if error < 0.1:
             break
         i = i + 1
 
-    return decTree, decTreeI
+    return decTree, decTreeI, user_vectors, item_vectors
 
 
 def printTopKMovies(test, predicted, K):
@@ -283,30 +295,20 @@ if __name__ == "__main__":
     MAX_DEPTH = 6
 
     # Build decision tree on training set
-    (decisionTree, decisionTreeI) = alternateOptimization(opinion_matrix, opinion_matrixI, rating_matrix, NUM_OF_FACTORS, MAX_DEPTH, File)
+    (decisionTree, decisionTreeI, user_vectors, item_vectors) = alternateOptimization(opinion_matrix,
+                                                                                      opinion_matrixI,
+                                                                                      rating_matrix,
+                                                                                      NUM_OF_FACTORS,
+                                                                                      MAX_DEPTH, File)
+    Predicted_Rating = np.dot(user_vectors, item_vectors.T)
+    np.savetxt('./results/item_vector.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('./results/user_vectors.txt', user_vectors, fmt='%0.8f')
+    np.savetxt('./results/rating_predict.txt', Predicted_Rating, fmt='%0.8f')
     TestFile = "yelp_test.txt"
     (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
-    item_vectors = decisionTreeI.getVectors_f(test_opinionI, NUM_OF_FACTORS)
-    np.savetxt('/results/item_vector.txt', item_vectors, fmt='%0.8f')
-    # Traverse the tree with the opinion to get user_profile
-    user_vectors = decisionTree.getVectors_f(test_opinion, NUM_OF_FACTORS)
-    np.savetxt('/results/user_vectors.txt', user_vectors, fmt='%0.8f')
-    Predicted_Rating = np.dot(user_vectors, item_vectors.T)
-    np.savetxt('/results/rating_predict.txt', Predicted_Rating, fmt='%0.8f')
+    Predicted_Rating[np.where[rating_matrix > 0]] = 0.0
 
-    # print("Predicted_Rating for Test: ", Predicted_Rating)
-    # print("Test Rating: ", test)
-    '''NDCG = getNDCG(Predicted_Rating, test_r, 10)
-    print("NDCG@10: ", NDCG)
-    NDCG = getNDCG(Predicted_Rating, test_r, 20)
-    print("NDCG@20: ", NDCG)
-    NDCG = getNDCG(Predicted_Rating, test_r, 50)
-    print("NDCG@50: ", NDCG)'''
     print("print user tree")
     decisionTree.printtree(decisionTree.root)
     print("print item tree")
-
     decisionTree.printtree(decisionTreeI.root)
-
-    # Top K new recommendations:
-    # printTopKMovies(test_r, Predicted_Rating, 5)
