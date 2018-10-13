@@ -131,7 +131,7 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors, i):
     num_pair = 20
     num_user, num_item = rating_matrix.shape
     np.random.seed(i)
-    #movie_vector = movie_vector + current_vector
+    movie_vector = movie_vector + current_vector
     if len(rating_matrix) == 0:
         return delta_v
 
@@ -180,7 +180,7 @@ def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
         sum_square_v += np.square(delta_v)
         lr_v = np.divide(lr, np.sqrt(sum_square_v))
         movie_vector -= lr_v * delta_v
-    #movie_vector = movie_vector + current_vector
+    movie_vector = movie_vector + current_vector
 
     return movie_vector
 
