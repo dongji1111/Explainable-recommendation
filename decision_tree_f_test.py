@@ -109,10 +109,10 @@ class Tree:
             return
 
         # Calulate the Error Before the Split
-        # print("Calculate error")
+        print("Calculate error")
         error_before = opt.lossfunction_all(rating_matrix, item_vectors, current_node.vector, 1)
 
-        # print("Error Before: ", error_before)
+        print("Error Before: ", error_before)
         # Create a numy_array to hold the split_criteria Values
         split_values = np.zeros(len(opinion_matrix[0]))
         params = {}

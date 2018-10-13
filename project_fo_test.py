@@ -226,7 +226,8 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Creating Tree.. for i = ", i, "for user")
         decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
         decTree.fitTree_U(decTree.root, opinion_matrix, rating_matrix, item_vectors, NUM_OF_FACTORS)
-
+        print("pring user tree "+ i)
+        decisionTree.printtree(decisionTree.root)
         print("Getting the user vectors from tree")
         # Calculate the User vectors using dtree
         user_vectors_before = user_vectors
@@ -240,7 +241,8 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Creating Tree.. for i = ", i, "for item")
         decTreeI = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
         decTreeI.fitTree_I(decTreeI.root, opinion_matrix_I, rating_matrix, user_vectors, NUM_OF_FACTORS)
-
+        print("pring item tree " + i)
+        decisionTreeI.printtree(decisionTreeI.root)
         print("Getting the item vectors from tree")
         item_vectors_before = item_vectors
         item_vectors = decTreeI.getVectors_f(opinion_matrix_I, NUM_OF_FACTORS)
@@ -301,13 +303,18 @@ if __name__ == "__main__":
                                                                                       NUM_OF_FACTORS,
                                                                                       MAX_DEPTH, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
-    np.savetxt('./results/item_vector.txt', item_vectors, fmt='%0.8f')
-    np.savetxt('./results/user_vectors.txt', user_vectors, fmt='%0.8f')
-    np.savetxt('./results/rating_predict.txt', Predicted_Rating, fmt='%0.8f')
+    np.savetxt('item_vector.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('user_vectors.txt', user_vectors, fmt='%0.8f')
+    np.savetxt('rating_predict.txt', Predicted_Rating, fmt='%0.8f')
     TestFile = "yelp_test.txt"
     (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
     Predicted_Rating[np.where[rating_matrix > 0]] = 0.0
-
+    NDCG = getNDCG(Predicted_Rating, test_r, 10)
+    print("NDCG@10: ", NDCG)
+    NDCG = getNDCG(Predicted_Rating, test_r, 20)
+    print("NDCG@20: ", NDCG)
+    NDCG = getNDCG(Predicted_Rating, test_r, 50)
+    print("NDCG@50: ", NDCG)
     print("print user tree")
     decisionTree.printtree(decisionTree.root)
     print("print item tree")

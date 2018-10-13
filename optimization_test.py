@@ -131,7 +131,7 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors, i):
     num_pair = 20
     num_user, num_item = rating_matrix.shape
     np.random.seed(i)
-    movie_vector = movie_vector + current_vector
+    #movie_vector = movie_vector + current_vector
     if len(rating_matrix) == 0:
         return delta_v
 
@@ -144,7 +144,7 @@ def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors, i):
 
 def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
     np.random.seed(0)
-    user_vector = np.random.rand(K)
+    user_vector = np.zeros_like(current_vector)
     index_matrix = rating_matrix[indices]
     num_iter = 20
     eps = 1e-8
@@ -158,6 +158,7 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
         delta_u = selfgradu(index_matrix, item_vectors, current_vector, user_vector, i)
         sum_square_u += np.square(delta_u)
         lr_u = np.divide(lr, np.sqrt(sum_square_u))
+        #print(np.dot(lr_u * delta_u,lr_u * delta_u))
         user_vector -= lr_u * delta_u
     user_vector = user_vector + current_vector
 
@@ -166,9 +167,9 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
 
 def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
     np.random.seed(0)
-    movie_vector = np.random.rand(K)
+    movie_vector = np.zeros_like(current_vector)
     rating_matrix = rating_matrix[:, indices]
-    num_iter = 20
+    num_iter = 100
     eps = 1e-8
     lr = 0.1
     sum_square_v = eps + np.zeros_like(movie_vector)
@@ -179,7 +180,7 @@ def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
         sum_square_v += np.square(delta_v)
         lr_v = np.divide(lr, np.sqrt(sum_square_v))
         movie_vector -= lr_v * delta_v
-    movie_vector = movie_vector + current_vector
+    #movie_vector = movie_vector + current_vector
 
     return movie_vector
 
@@ -189,7 +190,9 @@ def get_error_user(rating_matrix, sub_matrix, fixed_vectors, current_vector, ind
     vector = cf_user(rating_matrix, fixed_vectors, current_vector, indices, K)
     vector = np.repeat(vector.reshape(1, -1), len(indices), axis=0)
     pred = np.dot(vector, fixed_vectors.T)
-    Err = np.linalg.norm(pred - sub_matrix) ** 2
+    P = pred[np.nonzero(sub_matrix)]
+    R = sub_matrix[np.nonzero(sub_matrix)]
+    Err = np.linalg.norm(P-R) ** 2
     return vector, Err
 
 
@@ -198,7 +201,9 @@ def get_error_item(rating_matrix, sub_matrix, fixed_vectors, current_vector, ind
     vector = cf_item(rating_matrix, fixed_vectors, current_vector, indices, K)
     vector = np.repeat(vector.reshape(1, -1), len(indices), axis=0)
     pred = np.dot(fixed_vectors, vector.T)
-    Err = np.linalg.norm(pred - sub_matrix) ** 2
+    P = pred[np.nonzero(sub_matrix)]
+    R = sub_matrix[np.nonzero(sub_matrix)]
+    Err = np.linalg.norm(P-R) ** 2
     return vector, Err
 
 
@@ -218,15 +223,23 @@ def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, i
 
     if len(indices_like) > 0:
         like_vector, like_error = get_error_user(rating_matrix, like, movie_vectors, current_vector, indices_like, K)
-
+    else:
+        like_vector = current_vector
+        like_error = 0
     if len(indices_dislike) > 0:
         dislike_vector, dislike_error = get_error_user(rating_matrix, dislike, movie_vectors, current_vector, indices_dislike, K)
+    else:
+        dislike_vector = current_vector
+        dislike_error = 0
 
     if len(indices_unknown) > 0:
         unknown_vector, unknown_error = get_error_user(rating_matrix, unknown, movie_vectors, current_vector, indices_unknown, K)
+    else:
+        unknown_vector = current_vector
+        unknown_error = 0
 
     value += like_error + dislike_error + unknown_error
-
+    #print("like dislike unknown",value)
     value += lmd_v * (np.linalg.norm(like_vector) ** 2 + np.linalg.norm(dislike_vector) ** 2 + np.linalg.norm(unknown_vector) ** 2)
     value += lmd_u * (np.linalg.norm(movie_vectors) ** 2)
 
