@@ -303,7 +303,7 @@ if __name__ == "__main__":
                                                                                       NUM_OF_FACTORS,
                                                                                       MAX_DEPTH, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
-    np.savetxt('item_vector.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('item_vectors.txt', item_vectors, fmt='%0.8f')
     np.savetxt('user_vectors.txt', user_vectors, fmt='%0.8f')
     np.savetxt('rating_predict.txt', Predicted_Rating, fmt='%0.8f')
     TestFile = "yelp_test.txt"

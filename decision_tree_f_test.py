@@ -202,10 +202,10 @@ class Tree:
     def fitTree_I(self, current_node, opinion_matrix, rating_matrix, user_vectors, K):
         # rating_matrix only consists of rows which are users corresponding to the current Node
         # Check if the maxDepth is reached
-        print("current depth of the tree", current_node.depth)
         t1 = time.time()
         if current_node.depth > self.max_depth:
             return
+        print("current depth of the tree", current_node.depth)
         if len(rating_matrix) == 0:
             return
 
