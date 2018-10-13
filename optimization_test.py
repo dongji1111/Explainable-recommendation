@@ -290,13 +290,19 @@ def cal_splitvalueI(rating_matrix, user_vectors, current_vector, indices_like, i
     value = 0.0
     if len(indices_like) > 0:
         like_vector, like_error = get_error_item(rating_matrix, like, user_vectors, current_vector, indices_like, K)
-
+    else:
+        like_vector = current_vector
+        like_error = 0
     if len(indices_dislike) > 0:
         dislike_vector, dislike_error = get_error_item(rating_matrix, dislike, user_vectors, current_vector, indices_dislike, K)
-
+    else:
+        dislike_vector = current_vector
+        dislike_error = 0
     if len(indices_unknown) > 0:
         unknown_vector, unknown_error = get_error_item(rating_matrix, unknown, user_vectors, current_vector, indices_unknown, K)
-
+    else:
+        unknown_vector = current_vector
+        unknown_error = 0
     value += like_error + dislike_error + unknown_error
 
     value += lmd_v * (np.linalg.norm(like_vector) ** 2 + np.linalg.norm(dislike_vector) ** 2 + np.linalg.norm(unknown_vector) ** 2)

@@ -106,12 +106,12 @@ def getNDCG(predict, real, N):
     for i in range(len(predict)):
         arg_pre = np.argsort(-predict[i])
         rec_pre = real[i][arg_pre]
-        fout.write('user' + i + 'value of real rating with predict ranking :' + rec_pre)
+        fout.write('user'+ str(i)+ 'value of real rating with predict ranking :'+str(rec_pre))
         rec_pre = [rec_pre[k] for k in range(N)]  # value of real rating with Top N predict recommendation
         # rec_pre = np.array(rec_pre)
         arg_real = np.argsort(-real[i])  # ideal ranking of real rating with Top N
         rec_real = real[i][arg_real]
-        fout.write('user' + i + 'value of real rating with ideal ranking :' + rec_real)
+        fout.write('user', str(i)+'value of real rating with ideal ranking :'+ str(rec_real))
         rec_real = [rec_real[k] for k in range(N)]
         # print("rec_pre",rec_pre)
         # print("rec_real",rec_real)
@@ -226,8 +226,8 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Creating Tree.. for i = ", i, "for user")
         decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
         decTree.fitTree_U(decTree.root, opinion_matrix, rating_matrix, item_vectors, NUM_OF_FACTORS)
-        print("pring user tree "+ i)
-        decisionTree.printtree(decisionTree.root)
+        print("pring user tree ", i)
+        decTree.printtree(decTree.root)
         print("Getting the user vectors from tree")
         # Calculate the User vectors using dtree
         user_vectors_before = user_vectors
@@ -241,8 +241,8 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Creating Tree.. for i = ", i, "for item")
         decTreeI = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
         decTreeI.fitTree_I(decTreeI.root, opinion_matrix_I, rating_matrix, user_vectors, NUM_OF_FACTORS)
-        print("pring item tree " + i)
-        decisionTreeI.printtree(decisionTreeI.root)
+        print("pring item tree " , i)
+        decTreeI.printtree(decTreeI.root)
         print("Getting the item vectors from tree")
         item_vectors_before = item_vectors
         item_vectors = decTreeI.getVectors_f(opinion_matrix_I, NUM_OF_FACTORS)
@@ -303,19 +303,20 @@ if __name__ == "__main__":
                                                                                       NUM_OF_FACTORS,
                                                                                       MAX_DEPTH, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
-    np.savetxt('item_vectors.txt', item_vectors, fmt='%0.8f')
-    np.savetxt('user_vectors.txt', user_vectors, fmt='%0.8f')
-    np.savetxt('rating_predict.txt', Predicted_Rating, fmt='%0.8f')
+    np.savetxt('item_vectors6.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('user_vectors6.txt', user_vectors, fmt='%0.8f')
+    np.savetxt('rating_predict6.txt', Predicted_Rating, fmt='%0.8f')
+    print("print user tree")
+    decisionTree.printtree(decisionTree.root)
+    print("print item tree")
+    decisionTree.printtree(decisionTreeI.root)
     TestFile = "yelp_test.txt"
     (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
-    Predicted_Rating[np.where[rating_matrix > 0]] = 0.0
+    Predicted_Rating[np.where(rating_matrix > 0)] = 0.0
     NDCG = getNDCG(Predicted_Rating, test_r, 10)
     print("NDCG@10: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 20)
     print("NDCG@20: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 50)
     print("NDCG@50: ", NDCG)
-    print("print user tree")
-    decisionTree.printtree(decisionTree.root)
-    print("print item tree")
-    decisionTree.printtree(decisionTreeI.root)
+
