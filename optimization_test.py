@@ -5,8 +5,8 @@ from numba import jit, autojit
 
 
 lmd_BPR = 100
-lmd_u = 1
-lmd_v = 1
+lmd_u = 0.1
+lmd_v = 0.1
 NUM_USER = 7920
 NUM_ITEM = 13428
 EXP = 2.718281828459045
@@ -35,7 +35,7 @@ def lossfunction_all(rating_matrix, movie_vectors, user_vectors, flag):
     value = value + np.dot(Err, Err)
 
     np.random.seed(0)
-    num_pair = 20
+    num_pair = 60
     num_user, num_item = rating_matrix.shape
     for i in range(num_pair):
         c1, c2 = np.random.randint(0, num_item * num_user, 2)
@@ -81,8 +81,8 @@ def get_user_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
 
 def selfgradu(rating_matrix, movie_vectors, current_vector, user_vector, i):
     delta_u = np.zeros_like(user_vector)
-    num_point = 100
-    num_pair = 20
+    num_point = 3000
+    num_pair = 600
     num_user, num_item = rating_matrix.shape
     np.random.seed(i)
     user_vector = user_vector + current_vector
@@ -127,8 +127,8 @@ def get_item_gradient(selected_points, selected_pairs, rating_matrix, user_vecto
 
 def selfgradv(rating_matrix, movie_vector, current_vector, user_vectors, i):
     delta_v = np.zeros_like(movie_vector)
-    num_point = 100
-    num_pair = 20
+    num_point = 3000
+    num_pair = 600
     num_user, num_item = rating_matrix.shape
     np.random.seed(i)
     movie_vector = movie_vector + current_vector
@@ -160,6 +160,9 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
         lr_u = np.divide(lr, np.sqrt(sum_square_u))
         #print(np.dot(lr_u * delta_u,lr_u * delta_u))
         user_vector -= lr_u * delta_u
+        #final_vector = user_vector+current_vector
+        #error=lossfunction_all(index_matrix,item_vectors,final_vector,1)
+        #print("sgderror",error)
     user_vector = user_vector + current_vector
 
     return user_vector
@@ -168,7 +171,7 @@ def cf_user(rating_matrix, item_vectors, current_vector, indices, K):
 def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
     np.random.seed(0)
     movie_vector = np.zeros_like(current_vector)
-    rating_matrix = rating_matrix[:, indices]
+    index_matrix = rating_matrix[:, indices]
     num_iter = 100
     eps = 1e-8
     lr = 0.1
@@ -176,10 +179,13 @@ def cf_item(rating_matrix, user_vectors, current_vector, indices, K):
 
     # SGD procedure:
     for i in range(num_iter):
-        delta_v = selfgradv(rating_matrix, movie_vector, current_vector, user_vectors, i)
+        delta_v = selfgradv(index_matrix, movie_vector, current_vector, user_vectors, i)
         sum_square_v += np.square(delta_v)
         lr_v = np.divide(lr, np.sqrt(sum_square_v))
         movie_vector -= lr_v * delta_v
+        #final_vector = movie_vector + current_vector
+        #error=lossfunction_all(index_matrix, final_vector,user_vectors, 0)
+        #print("sgderror", error)
     movie_vector = movie_vector + current_vector
 
     return movie_vector
@@ -220,18 +226,19 @@ def prepare_user_data(rating_matrix, indices_like, indices_dislike, indices_unkn
 def cal_splitvalue(rating_matrix, movie_vectors, current_vector, indices_like, indices_dislike, indices_unknown, K):
     like, dislike, unknown = prepare_user_data(rating_matrix, indices_like, indices_dislike, indices_unknown)
     value = 0.0
-
+    #print("like")
     if len(indices_like) > 0:
         like_vector, like_error = get_error_user(rating_matrix, like, movie_vectors, current_vector, indices_like, K)
     else:
         like_vector = current_vector
         like_error = 0
+    #print("dislike")
     if len(indices_dislike) > 0:
         dislike_vector, dislike_error = get_error_user(rating_matrix, dislike, movie_vectors, current_vector, indices_dislike, K)
     else:
         dislike_vector = current_vector
         dislike_error = 0
-
+    #print("unknown")
     if len(indices_unknown) > 0:
         unknown_vector, unknown_error = get_error_user(rating_matrix, unknown, movie_vectors, current_vector, indices_unknown, K)
     else:
