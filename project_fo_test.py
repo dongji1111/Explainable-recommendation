@@ -4,6 +4,7 @@ import decision_tree_f_test as dtree
 from numba import jit
 import optimization_test as opt
 import math
+import sys
 
 
 def getRatingMatrix(filename):
@@ -64,7 +65,9 @@ def getRatingMatrix(filename):
 
         ratingMatrix = np.zeros((num_users, num_items), dtype=float)
         opinionMatrix = np.zeros((num_users, index_f), dtype=float)
+        opinionMatrix = np.full(opinionMatrix.shape,10000)
         opinionMatrix_I = np.zeros((num_items, index_f), dtype=float)
+        opinionMatrix_I = np.full(opinionMatrix_I.shape, 10000)
         # print(len(data))
         # print(len(data_fo))
 
@@ -72,29 +75,17 @@ def getRatingMatrix(filename):
             list1 = data[i]  # userid itemid rating in line i
             list2 = data_fo[i]  # all f-o pair in line i
             ratingMatrix[list1[0]][list1[1]] = list1[2]
+            f_positive = 0
+            f_negtive = 0
             for j in range(0, len(list2), 2):
                 # list2[j] is feature_id list2[j+1] is value of opinion
-                opinionMatrix[list1[0]][list2[j]] = opinionMatrix[list1[0]][list2[j]] + list2[j + 1]
-                opinionMatrix_I[list1[1]][list2[j]] = opinionMatrix_I[list1[1]][list2[j]] + list2[j + 1]
-        # print(ratingMatrix)
-        # print(opinionMatrix)
-        for i in range(len(opinionMatrix)):
-            for j in range(len(opinionMatrix[0])):
-                if opinionMatrix[i][j] > 0:
-                    opinionMatrix[i][j] = 1
-                if opinionMatrix[i][j] < 0:
-                    opinionMatrix[i][j] = -1
-                if opinionMatrix[i][j] == 0:
-                    opinionMatrix[i][j] = 0
+                if(list2[j+1]>0):
+                    f_positive+=1
+                elif(list2[j+1]<0):
+                    f_negtive+=1
+                opinionMatrix[list1[0]][list2[j]] = f_positive+f_negtive
+                opinionMatrix_I[list1[1]][list2[j]] = f_positive-f_negtive
 
-        for i in range(len(opinionMatrix_I)):
-            for j in range(len(opinionMatrix_I[0])):
-                if opinionMatrix_I[i][j] > 0:
-                    opinionMatrix_I[i][j] = 1
-                if opinionMatrix_I[i][j] < 0:
-                    opinionMatrix_I[i][j] = -1
-                if opinionMatrix_I[i][j] == 0:
-                    opinionMatrix_I[i][j] = 0
         return ratingMatrix, opinionMatrix, opinionMatrix_I
 
 
@@ -102,16 +93,16 @@ def getNDCG(predict, real, N):
     NDCG = []
     predict = np.array(predict)
     real = np.array(real)
-    fout = open('reclist.txt', 'w')
+    #fout = open('reclist.txt', 'w')
     for i in range(len(predict)):
         arg_pre = np.argsort(-predict[i])
         rec_pre = real[i][arg_pre]
-        fout.write('user'+ str(i)+ 'value of real rating with predict ranking :'+str(rec_pre))
+        #fout.write('user'+ str(i)+ 'value of real rating with predict ranking :'+str(rec_pre))
         rec_pre = [rec_pre[k] for k in range(N)]  # value of real rating with Top N predict recommendation
         # rec_pre = np.array(rec_pre)
         arg_real = np.argsort(-real[i])  # ideal ranking of real rating with Top N
         rec_real = real[i][arg_real]
-        fout.write('user', str(i)+'value of real rating with ideal ranking :'+ str(rec_real))
+        #fout.write('user', str(i)+'value of real rating with ideal ranking :'+ str(rec_real))
         rec_real = [rec_real[k] for k in range(N)]
         # print("rec_pre",rec_pre)
         # print("rec_real",rec_real)
@@ -120,7 +111,10 @@ def getNDCG(predict, real, N):
         for j in range(N):
             dcg = dcg + rec_pre[j] / math.log2(j + 2)
             idcg = idcg + rec_real[j] / math.log2(j + 2)
-        NDCG.append(dcg / idcg)
+        #print("dcg",dcg)
+        #print("idcg",idcg)
+        if(idcg!=0):
+            NDCG.append(dcg / idcg)
     print(NDCG)
     sum = 0
     for i in range(len(NDCG)):
@@ -223,15 +217,15 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
     while i < 5:
 
         # Create the decision Tree based on item_vectors
-        print("Creating Tree.. for i = ", i, "for user")
-        decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
-        decTree.fitTree_U(decTree.root, opinion_matrix, rating_matrix, item_vectors, NUM_OF_FACTORS)
-        print("pring user tree ", i)
-        decTree.printtree(decTree.root)
+        #print("Creating Tree.. for i = ", i, "for user")
+        #decTree = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
+        #decTree.fitTree_U(decTree.root, opinion_matrix, rating_matrix, item_vectors, NUM_OF_FACTORS)
+        #print("print user tree ", i)
+        #decTree.printtree(decTree.root)
         print("Getting the user vectors from tree")
         # Calculate the User vectors using dtree
         user_vectors_before = user_vectors
-        user_vectors = decTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
+        #user_vectors = decTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
         # adding personalized term
         for index in range(len(rating_matrix)):
             indice = np.array([index])
@@ -241,7 +235,7 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         print("Creating Tree.. for i = ", i, "for item")
         decTreeI = dtree.Tree(dtree.Node(None, 1), NUM_OF_FACTORS, MAX_DEPTH)
         decTreeI.fitTree_I(decTreeI.root, opinion_matrix_I, rating_matrix, user_vectors, NUM_OF_FACTORS)
-        print("pring item tree " , i)
+        print("print item tree " , i)
         decTreeI.printtree(decTreeI.root)
         print("Getting the item vectors from tree")
         item_vectors_before = item_vectors
@@ -289,34 +283,35 @@ def printTopKMovies(test, predicted, K):
 
 if __name__ == "__main__":
     # Get the Data
-    File = "yelp_train.txt"
-    (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix(File)
+    #File_train, File_test, MAX_DEPTH, NUM_OF_FACTORS = sys.argv[1:]
+    File_train = "test_train.txt"
+    (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix(File_train)
     print("Dimensions of the training dataset: ", rating_matrix.shape)
     # Set the number of Factors
+
     NUM_OF_FACTORS = 20
     MAX_DEPTH = 6
-
+    user_vectors, item_vectors = MF(20, 0.05, 0.02, 0.02, 100, File_train)
     # Build decision tree on training set
     (decisionTree, decisionTreeI, user_vectors, item_vectors) = alternateOptimization(opinion_matrix,
-                                                                                      opinion_matrixI,
-                                                                                      rating_matrix,
-                                                                                      NUM_OF_FACTORS,
-                                                                                      MAX_DEPTH, File)
+                                                                                      opinion_matrixI,rating_matrix,NUM_OF_FACTORS,MAX_DEPTH, File_train)
+
+    #user_vectors,item_vectors=MF(20, 0.05, 0.02,0.02, 1000, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
     np.savetxt('item_vectors6.txt', item_vectors, fmt='%0.8f')
     np.savetxt('user_vectors6.txt', user_vectors, fmt='%0.8f')
     np.savetxt('rating_predict6.txt', Predicted_Rating, fmt='%0.8f')
     print("print user tree")
-    decisionTree.printtree(decisionTree.root)
+    #decisionTree.printtree(decisionTree.root)
     print("print item tree")
-    decisionTree.printtree(decisionTreeI.root)
-    TestFile = "yelp_test.txt"
-    (test_r, test_opinion, test_opinionI) = getRatingMatrix(TestFile)
-    Predicted_Rating[np.where(rating_matrix > 0)] = 0.0
+    #decisionTree.printtree(decisionTreeI.root)
+    File_test = "test_test.txt"
+    (test_r, test_opinion, test_opinionI) = getRatingMatrix(File_test)
+    #Predicted_Rating[np.where(rating_matrix[:, :] > 0)] = 0.0
     NDCG = getNDCG(Predicted_Rating, test_r, 10)
-    print("NDCG@10: ", NDCG)
+    #print("NDCG@10: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 20)
-    print("NDCG@20: ", NDCG)
+    #print("NDCG@20: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 50)
-    print("NDCG@50: ", NDCG)
+    #print("NDCG@50: ", NDCG)
 
