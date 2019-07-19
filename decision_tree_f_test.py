@@ -8,10 +8,10 @@ import time
 # Split the users/items into Like, Dislike and Unknown by user/item-feature opinion
 def split(data, feature_index, split_point):  # data should be opinion matrix
     # Get the indices for the when the opinion value is like
-    indices_like = np.where((data[:, feature_index] > split_point)&(data[:, feature_index] != 10000))[0]
+    indices_like = np.where((data[:, feature_index] >= split_point)&(data[:, feature_index] != 10000))[0]
 
     # Get the indices for the when the opinion value is dislike
-    indices_dislike = np.where(data[:, feature_index] <= split_point)[0]
+    indices_dislike = np.where(data[:, feature_index] < split_point)[0]
 
     # Get the indices for the when the opinion is unknown
     indices_unknown = np.where(data[:, feature_index] == 10000)[0]
@@ -66,7 +66,7 @@ class Tree:
             while current_node.like != None or current_node.dislike != None or current_node.unknown != None:
                 if opinion_matrix[i][current_node.feature_index] == 10000:
                     current_node = current_node.unknown
-                elif opinion_matrix[i][current_node.feature_index] <= current_node.split_point:
+                elif opinion_matrix[i][current_node.feature_index] < current_node.split_point:
                     current_node = current_node.dislike
                 else:
                     current_node = current_node.like
@@ -111,6 +111,7 @@ class Tree:
         for feature_index in range(len(opinion_matrix[0])):
             # Split the rating_matrix into like, dislike and unknown
             NUMBER_OF_BIN =5
+            # for each feature find the split_points
             split_points = self.find_split_point(opinion_matrix, feature_index, NUMBER_OF_BIN)
             feature_splitpoint_matrix.append(split_points)
             for split_point in split_points:
@@ -143,10 +144,14 @@ class Tree:
         temp_index = []
 
         for i in range(len(opinion_matrix[0])):
+            # temp_value is the min results for each feature
             temp_value.append( min(results[i]))
+            # temp_index is the corresponding index of split_point for each feature
             temp_index.append( results[i].index(min(results[i])))
+        # get the best feature index
         bestFeature = temp_value.index(min(temp_value))
-        best_split_point = temp_index[bestFeature]
+        # get the corresponding value of split_point
+        best_split_point = feature_splitpoint_matrix[bestFeature][temp_index[bestFeature]]
 
         #for feature_index in range(len(opinion_matrix[0])):
         #    # split_values[feature_index] = results[feature_index].get()
@@ -162,6 +167,7 @@ class Tree:
 
         # Store the feature_index for the current_node
         current_node.feature_index = bestFeature
+        # Store the split_point for the current_node
         current_node.split_point = best_split_point
 
         # Split the rating_matrix into like, dislike and unknown
@@ -276,7 +282,7 @@ class Tree:
             temp_value.append(min(results[i]))
             temp_index.append(results[i].index(min(results[i])))
         bestFeature = temp_value.index(min(temp_value))
-        best_split_point = temp_index[bestFeature]
+        best_split_point = feature_splitpoint_matrix[bestFeature][temp_index[bestFeature]]
 
         print("bestFeature index: ", bestFeature)
         print("Split point:", best_split_point)
