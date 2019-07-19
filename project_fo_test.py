@@ -75,17 +75,24 @@ def getRatingMatrix(filename):
             list1 = data[i]  # userid itemid rating in line i
             list2 = data_fo[i]  # all f-o pair in line i
             ratingMatrix[list1[0]][list1[1]] = list1[2]
-            f_positive = 0
-            f_negtive = 0
             for j in range(0, len(list2), 2):
                 # list2[j] is feature_id list2[j+1] is value of opinion
-                if(list2[j+1]>0):
-                    f_positive+=1
-                elif(list2[j+1]<0):
-                    f_negtive+=1
-                opinionMatrix[list1[0]][list2[j]] = f_positive+f_negtive
-                opinionMatrix_I[list1[1]][list2[j]] = f_positive-f_negtive
-
+                if opinionMatrix[list1[0]][list2[j]]==10000:
+                    opinionMatrix[list1[0]][list2[j]] =0
+                if opinionMatrix_I[list1[1]][list2[j]] ==10000:
+                    opinionMatrix_I[list1[1]][list2[j]]=0
+                # opinionMatrix[list1[0]][list2[j]] += 1 frequence
+                opinionMatrix[list1[0]][list2[j]]+=list2[j+1] #sentiment score
+                opinionMatrix_I[list1[1]][list2[j]]+=1 #frequence
+                # opinionMatrix_I[list1[1]][list2[j]] += list2[j + 1] #sentiment score
+        for i in range(10):
+            print(i)
+            print('opinion')
+            for j in range(len(opinionMatrix[0])):
+                print(opinionMatrix[i][j])
+            print('opinion_I')
+            for j in range(len(opinionMatrix_I[0])):
+                print(opinionMatrix_I[i][j])
         return ratingMatrix, opinionMatrix, opinionMatrix_I
 
 
@@ -228,8 +235,8 @@ def alternateOptimization(opinion_matrix, opinion_matrix_I, rating_matrix, NUM_O
         #user_vectors = decTree.getVectors_f(opinion_matrix, NUM_OF_FACTORS)
         # adding personalized term
         for index in range(len(rating_matrix)):
-            indice = np.array([index])
-            user_vectors[index] = opt.cf_user(rating_matrix, item_vectors, user_vectors[index], indice,
+           indice = np.array([index])
+           user_vectors[index] = opt.cf_user(rating_matrix, item_vectors, user_vectors[index], indice,
                                               NUM_OF_FACTORS)
 
         print("Creating Tree.. for i = ", i, "for item")
@@ -282,36 +289,33 @@ def printTopKMovies(test, predicted, K):
 
 
 if __name__ == "__main__":
-    # Get the Data
     #File_train, File_test, MAX_DEPTH, NUM_OF_FACTORS = sys.argv[1:]
-    File_train = "test_train.txt"
+    File_train = "yelp_train.txt"
     (rating_matrix, opinion_matrix, opinion_matrixI) = getRatingMatrix(File_train)
     print("Dimensions of the training dataset: ", rating_matrix.shape)
     # Set the number of Factors
 
     NUM_OF_FACTORS = 20
-    MAX_DEPTH = 6
+    MAX_DEPTH = 5
     user_vectors, item_vectors = MF(20, 0.05, 0.02, 0.02, 100, File_train)
     # Build decision tree on training set
     (decisionTree, decisionTreeI, user_vectors, item_vectors) = alternateOptimization(opinion_matrix,
                                                                                       opinion_matrixI,rating_matrix,NUM_OF_FACTORS,MAX_DEPTH, File_train)
 
-    #user_vectors,item_vectors=MF(20, 0.05, 0.02,0.02, 1000, File)
     Predicted_Rating = np.dot(user_vectors, item_vectors.T)
-    np.savetxt('item_vectors6.txt', item_vectors, fmt='%0.8f')
-    np.savetxt('user_vectors6.txt', user_vectors, fmt='%0.8f')
-    np.savetxt('rating_predict6.txt', Predicted_Rating, fmt='%0.8f')
+    np.savetxt('item_vectors5.txt', item_vectors, fmt='%0.8f')
+    np.savetxt('user_vectors5.txt', user_vectors, fmt='%0.8f')
+    np.savetxt('rating_predict5.txt', Predicted_Rating, fmt='%0.8f')
     print("print user tree")
-    #decisionTree.printtree(decisionTree.root)
+    decisionTree.printtree(decisionTree.root)
     print("print item tree")
-    #decisionTree.printtree(decisionTreeI.root)
-    File_test = "test_test.txt"
+    decisionTree.printtree(decisionTreeI.root)
+    File_test = "yelp_test.txt"
     (test_r, test_opinion, test_opinionI) = getRatingMatrix(File_test)
-    #Predicted_Rating[np.where(rating_matrix[:, :] > 0)] = 0.0
     NDCG = getNDCG(Predicted_Rating, test_r, 10)
-    #print("NDCG@10: ", NDCG)
+    print("NDCG@10: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 20)
-    #print("NDCG@20: ", NDCG)
+    print("NDCG@20: ", NDCG)
     NDCG = getNDCG(Predicted_Rating, test_r, 50)
-    #print("NDCG@50: ", NDCG)
+    print("NDCG@50: ", NDCG)
 
