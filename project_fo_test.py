@@ -85,14 +85,6 @@ def getRatingMatrix(filename):
                 opinionMatrix[list1[0]][list2[j]]+=list2[j+1] #sentiment score
                 opinionMatrix_I[list1[1]][list2[j]]+=1 #frequence
                 # opinionMatrix_I[list1[1]][list2[j]] += list2[j + 1] #sentiment score
-        for i in range(10):
-            print(i)
-            print('opinion')
-            for j in range(len(opinionMatrix[0])):
-                print(opinionMatrix[i][j])
-            print('opinion_I')
-            for j in range(len(opinionMatrix_I[0])):
-                print(opinionMatrix_I[i][j])
         return ratingMatrix, opinionMatrix, opinionMatrix_I
 
 
